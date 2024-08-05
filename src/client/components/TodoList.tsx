@@ -1,8 +1,11 @@
-import type { SVGProps } from 'react'
+import { useState, type SVGProps } from 'react'
 
 import * as Checkbox from '@radix-ui/react-checkbox'
 
 import { api } from '@/utils/client/api'
+
+import { useAutoAnimate } from '@formkit/auto-animate/react'
+
 
 /**
  * QUESTION 3:
@@ -64,16 +67,68 @@ import { api } from '@/utils/client/api'
  */
 
 export const TodoList = () => {
-  const { data: todos = [] } = api.todo.getAll.useQuery({
+  var { data: todos = [] } = api.todo.getAll.useQuery({
     statuses: ['completed', 'pending'],
   })
+  const todoData = api.todoStatus.update.useMutation();
+  const deleteAction=api.todo.delete.useMutation();
 
-  return (
+  const [filterSign, setFilterSign] = useState("all");
+  
+  const [parent, enableAnimations] = useAutoAnimate()
+
+  const arrTodoAll:any[]= [];
+
+  var arrCompleted:number[] = []
+
+  todos.map((todo)=>{
+    if(todo.status==="completed"){
+      arrCompleted.push(todo.id);
+    }
+    arrTodoAll.push(todo);
+  })
+
+  const handleClickFilter = (event:any) => {
+    const valueE = event.target.childNodes[0].textContent
+    if(valueE=="Pending"){
+      setFilterSign("pending");
+    }
+    else if(valueE=="Completed") {
+      setFilterSign("completed")
+    }
+    else if(valueE=="All") {
+      setFilterSign("all");
+    }
+  };
+  if(filterSign=="all"||""){
+    todos = todos.filter((todo)=>todo.status=="pending"||todo.status=="completed");
+  }
+  else if(filterSign=="pending" || "completed"){
+    todos = todos.filter((todo)=>todo.status==filterSign);
+  }
+  return (<>
+    <ul className="flex gap-2 text-center my-3" ref={parent}>
+      <li className="border-gray-200 border px-6 py-3 rounded-full cursor-pointer" onClick={handleClickFilter}>All</li>
+      <li className="border-gray-200 border px-6 py-3 rounded-full cursor-pointer" onClick={handleClickFilter}>Pending</li>
+      <li className="border-gray-200 border px-6 py-3 rounded-full cursor-pointer" onClick={handleClickFilter}>Completed</li>
+    </ul>
     <ul className="grid grid-cols-1 gap-y-3">
       {todos.map((todo) => (
         <li key={todo.id}>
-          <div className="flex items-center rounded-12 border border-gray-200 px-4 py-3 shadow-sm">
+          <div className={`${todo.status=="completed"?"bg-gray-100":""} flex items-center rounded-12 border border-gray-200 px-4 py-3 shadow-sm`}>
             <Checkbox.Root
+              onClick={(event)=>{
+                if(todo.status==="pending"){
+                  todoData.mutate({status:"completed", todoId:todo.id})
+                  arrCompleted.push(todo.id);
+                  console.log(todo.status)
+                }
+                else {
+                  todoData.mutate({status:"pending", todoId:todo.id})
+                  arrCompleted.filter(element=>element!==todo.id)
+                }
+              }}
+              checked={arrCompleted.includes(todo.id)}
               id={String(todo.id)}
               className="flex h-6 w-6 items-center justify-center rounded-6 border border-gray-300 focus:border-gray-700 focus:outline-none data-[state=checked]:border-gray-700 data-[state=checked]:bg-gray-700"
             >
@@ -82,13 +137,20 @@ export const TodoList = () => {
               </Checkbox.Indicator>
             </Checkbox.Root>
 
-            <label className="block pl-3 font-medium" htmlFor={String(todo.id)}>
+            <label className={`block pl-3 font-medium ${todo.status=="completed"?"line-through text-gray-500":""}`} htmlFor={String(todo.id)}>
               {todo.body}
             </label>
+            <XMarkIcon 
+              className="w-6 h-6 ml-64 cursor-pointer"
+              onClick={()=>{
+                deleteAction.mutate({id:todo.id});
+              }}
+            ></XMarkIcon>
           </div>
         </li>
       ))}
     </ul>
+    </>
   )
 }
 
@@ -103,6 +165,7 @@ const XMarkIcon = (props: SVGProps<SVGSVGElement>) => {
       {...props}
     >
       <path
+        className='ml-6'
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M6 18L18 6M6 6l12 12"

@@ -49,11 +49,20 @@ export const CreateTodoForm = () => {
         onChange={(e) => {
           setTodoBody(e.target.value)
         }}
+        onKeyDown={(event)=>{
+          if(event.key === 'Enter'){
+            createTodo({
+              body: todoBody,
+            })
+            setTodoBody('')
+          }
+        }}
         className="flex-1 px-4 text-base placeholder:text-gray-400 focus:outline-none"
       />
 
       <button
         type="button"
+        className="border px-5 py-2 text-center rounded-full text-white bg-gray-700"
         disabled={isCreatingTodo}
         onClick={() => {
           createTodo({
